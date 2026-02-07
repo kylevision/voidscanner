@@ -17,8 +17,8 @@ Bypasses the "Wall of Popularity." Most tools only show the top 100 streams. The
 * **Filters:** Language Lock (en, es, ru, etc.), Viewer Range (e.g., 0-0 or 1-3).
 * **Mosaic Mode:** View a wall of 50 thumbnails at once for rapid visual scanning.
 
-### 2. 🕵️ Dragnet (Sentinel)
-Twitch does not allow global searches for stream titles (e.g., you can't search for "IMG_001"). The Dragnet solves this by manually downloading the top 500 streams from high-probability categories (*Just Chatting*, *Travel*, *Art*) and filtering them locally.
+### 2. 🕵️ Global Title Search
+Twitch does not allow global searches for stream titles. This solves that by manually crawling the Top 100 Categories to find a keyword in ANY stream title and filtering them locally.
 * **Keywords:** Detects raw filenames like `IMG_`, `DSC_`, `MVI_` or terms like `Security`, `Testing`, `WIP`.
 * **Use Case:** Finding people streaming raw camera feeds or forgotten OBS tests.
 
