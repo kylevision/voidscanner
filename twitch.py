@@ -1,7 +1,7 @@
 """
-TWITCH VOID SCANNER v3.2 — REGION LOCK EDITION
-Feature: Adds Language Filtering to Deep Drill, Dragnet, and CCTV modes
-to prevent flooding results with non-target languages.
+TWITCH VOID SCANNER v4.0 — GLOBAL HUNTER
+Feature: "Global Keyword Search" - Crawls the Top 100 Categories to find 
+a specific word in stream titles across the entire platform.
 """
 import streamlit as st
 import pandas as pd
@@ -13,7 +13,7 @@ import random
 # ═══════════════════════════════════════════════════════════════════════
 # CONFIG & STYLE
 # ═══════════════════════════════════════════════════════════════════════
-st.set_page_config(page_title="VOID SCANNER v3.2", page_icon="🌐", layout="wide")
+st.set_page_config(page_title="VOID SCANNER v4.0", page_icon="🌍", layout="wide")
 
 st.markdown("""
 <style>
@@ -34,11 +34,12 @@ st.markdown("""
         padding: 10px;
         border: 1px solid #333;
         margin-bottom: 20px;
-        height: 100px;
+        height: 150px;
         overflow-y: auto;
     }
     
     .uptime-badge { color: #ff4f4f; font-weight: bold; }
+    .cat-badge { background: #333; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; }
     
     /* Input Styling */
     .stTextInput input, .stSelectbox div[data-baseweb="select"] {
@@ -81,13 +82,14 @@ def calculate_uptime(started_at):
     return f"{int(hours)}h {int((hours*60)%60)}m", hours
 
 def deep_drill(game_id, token, client_id, min_v, max_v, status_box, language=None, max_results=50):
+    """Standard Deep Drill for single category."""
     url = "https://api.twitch.tv/helix/streams"
     cursor = None
     matches = []
     pages = 0
     total = 0
     
-    while len(matches) < max_results and pages < 100:
+    while len(matches) < max_results and pages < 50:
         pages += 1
         params = {"first": 100, "game_id": game_id}
         if cursor: params["after"] = cursor
@@ -118,43 +120,76 @@ def deep_drill(game_id, token, client_id, min_v, max_v, status_box, language=Non
         
     return matches
 
-def dragnet_scan(keyword, token, client_id, status_box, language=None):
-    targets = [
-        ("509658", "Just Chatting"), 
-        ("509660", "Art"), 
-        ("509672", "Travel & Outdoors"),
-        ("509667", "Food & Drink")
-    ]
+def global_keyword_hunt(keyword, token, client_id, min_v, max_v, language=None, depth=50, status_box=None):
+    """
+    THE CRAWLER:
+    1. Fetches Top N Categories on Twitch.
+    2. Scans the stream titles in ALL of them.
+    """
+    # Step 1: Get Top Games
+    if status_box: status_box.markdown(f"📡 FETCHING TOP {depth} CATEGORIES...")
     
+    url_games = "https://api.twitch.tv/helix/games/top"
+    all_games = []
+    cursor = None
+    
+    # Fetch enough games to fill depth
+    while len(all_games) < depth:
+        params = {"first": 100}
+        if cursor: params["after"] = cursor
+        r = requests.get(url_games, headers=headers(token, client_id), params=params)
+        data = r.json()
+        games = data.get("data", [])
+        if not games: break
+        all_games.extend(games)
+        cursor = data.get("pagination", {}).get("cursor")
+        if not cursor: break
+    
+    # Trim to requested depth
+    targets = all_games[:depth]
+    
+    # Step 2: Scan Each Game
     matches = []
-    url = "https://api.twitch.tv/helix/streams"
+    url_streams = "https://api.twitch.tv/helix/streams"
     
-    for gid, gname in targets:
-        cursor = None
-        for i in range(5): # Scan 5 pages per category
-            if status_box:
-                status_box.markdown(f"SCANNING CATEGORY: **{gname}** (Page {i+1})...")
-                
-            params = {"first": 100, "game_id": gid}
-            if cursor: params["after"] = cursor
-            if language and language != "All": params["language"] = language
-            
-            try:
-                r = requests.get(url, headers=headers(token, client_id), params=params)
-                data = r.json()
-                streams = data.get("data", [])
-            except: break
-            
-            if not streams: break
-            
-            for s in streams:
-                if keyword.lower() in s['title'].lower():
+    total_checked = 0
+    
+    for i, game in enumerate(targets):
+        gid = game['id']
+        gname = game['name']
+        
+        if status_box:
+             status_box.markdown(f"""
+             ```bash
+             > TARGETING: {gname} [{i+1}/{depth}]
+             > TOTAL STREAMS CHECKED: {total_checked}
+             > HITS FOUND: {len(matches)}
+             ```
+             """)
+        
+        # We scan 1 page (100 streams) per top category. 
+        # Most "keyword" streams will be in the top 100 of their category.
+        params = {"first": 100, "game_id": gid}
+        if language and language != "All": params["language"] = language
+        
+        try:
+            r = requests.get(url_streams, headers=headers(token, client_id), params=params)
+            streams = r.json().get("data", [])
+        except: continue
+        
+        total_checked += len(streams)
+        
+        for s in streams:
+            # TITLE MATCH CHECK
+            if keyword.lower() in s['title'].lower():
+                # Viewer Range Check
+                if min_v <= s['viewer_count'] <= max_v:
                     s['uptime_str'], s['uptime_hours'] = calculate_uptime(s['started_at'])
                     matches.append(s)
-            
-            cursor = data.get("pagination", {}).get("cursor")
-            if not cursor: break
-            
+        
+        # Rate limit niceness
+        time.sleep(0.05)
+
     return matches
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -162,7 +197,7 @@ def dragnet_scan(keyword, token, client_id, status_box, language=None):
 # ═══════════════════════════════════════════════════════════════════════
 
 def main():
-    st.title("VOID SCANNER v3.2 // REGION LOCK")
+    st.title("VOID SCANNER v4.0 // GLOBAL HUNTER")
     
     with st.sidebar:
         st.header("🔑 KEYS")
@@ -176,9 +211,48 @@ def main():
     if "token" not in st.session_state:
         st.info("ENTER KEYS TO START"); return
 
-    tab_drill, tab_sentinel, tab_cctv = st.tabs(["📉 DEEP DRILL", "🕵️ DRAGNET", "📹 CCTV"])
+    # TABS
+    tab_global, tab_drill, tab_cctv = st.tabs(["🌍 GLOBAL TITLE SEARCH", "📉 DEEP DRILL", "📹 CCTV"])
 
-    # ─── TAB 1: DEEP DRILL ───
+    # ─── TAB 1: GLOBAL HUNTER ───
+    with tab_global:
+        st.markdown("### 🌍 SEARCH ENTIRE SITE BY TITLE")
+        st.caption("Crawls the Top 100 Categories to find a keyword in ANY stream title.")
+        
+        c_kw, c_lang = st.columns([3, 1])
+        with c_kw: keyword = st.text_input("TITLE KEYWORD", placeholder="e.g. Fart, Pizza, Secret, Test")
+        with c_lang: lang_global = st.selectbox("LANGUAGE", ["All", "en", "es", "fr", "de", "ru", "ja", "ko"], index=1, key="l_glob")
+        
+        c_range, c_depth = st.columns([1, 1])
+        with c_range: v_global = st.slider("VIEWERS", 0, 1000, (0, 100), key="v_glob", help="Broad range recommended for global search.")
+        with c_depth: depth_scan = st.slider("SCAN DEPTH (Categories)", 10, 100, 50, help="How many game categories to scan? 100 covers 95% of Twitch.")
+        
+        if st.button("INITIATE GLOBAL CRAWL", use_container_width=True):
+            if keyword:
+                box = st.empty()
+                results = global_keyword_hunt(
+                    keyword, st.session_state.token, st.session_state.cid, 
+                    v_global[0], v_global[1], lang_global, depth_scan, box
+                )
+                
+                box.success(f"CRAWL COMPLETE. Found {len(results)} streams with '{keyword}' in title.")
+                
+                if results:
+                    # Sort by viewers (Ascending = Void First)
+                    results.sort(key=lambda x: x['viewer_count'])
+                    
+                    for s in results:
+                        with st.container():
+                            c_img, c_txt = st.columns([1,3])
+                            with c_img: st.image(s['thumbnail_url'].replace("{width}","320").replace("{height}","180"))
+                            with c_txt:
+                                st.markdown(f"**[{s['user_name']}](https://twitch.tv/{s['user_name']})**")
+                                st.markdown(f"👁️ {s['viewer_count']} | <span class='cat-badge'>{s['game_name']}</span>", unsafe_allow_html=True)
+                                st.markdown(f"Title: **{s['title']}**") # Highlight title
+                                st.markdown(f"<span class='uptime-badge'>⏱️ {s['uptime_str']}</span>", unsafe_allow_html=True)
+                            st.markdown("---")
+
+    # ─── TAB 2: DEEP DRILL ───
     with tab_drill:
         c1, c2, c3, c4 = st.columns([2, 1, 1, 1])
         with c1: game_q = st.text_input("CATEGORY", value="Just Chatting")
@@ -212,32 +286,6 @@ def main():
                                 st.image(s['thumbnail_url'].replace("{width}","320").replace("{height}","180"), use_container_width=True)
                                 st.caption(f"{s['user_name']} ({s['viewer_count']}v)")
                                 st.markdown(f"[Watch](https://twitch.tv/{s['user_name']})")
-
-    # ─── TAB 2: DRAGNET ───
-    with tab_sentinel:
-        st.caption("Scans high-probability categories for TITLE keywords.")
-        c_k, c_l = st.columns([3, 1])
-        with c_k: kw = st.text_input("TITLE KEYWORD", placeholder="e.g. IMG_, DSC, Testing, Security")
-        with c_l: lang_drag = st.selectbox("LANGUAGE", ["All", "en", "es", "fr", "de", "ru", "ja", "ko"], index=1, key="l_drag")
-        
-        if st.button("SCAN CATEGORIES", use_container_width=True):
-            if kw:
-                status_box = st.empty()
-                matches = dragnet_scan(kw, st.session_state.token, st.session_state.cid, status_box, language=lang_drag)
-                status_box.success(f"FOUND {len(matches)} streams containing '{kw}' ({lang_drag}).")
-                
-                if matches:
-                    matches.sort(key=lambda x: x['viewer_count'])
-                    for s in matches:
-                        with st.container():
-                            c_img, c_txt = st.columns([1,3])
-                            with c_img: st.image(s['thumbnail_url'].replace("{width}","320").replace("{height}","180"))
-                            with c_txt:
-                                st.markdown(f"**[{s['user_name']}](https://twitch.tv/{s['user_name']})**")
-                                st.markdown(f"👁️ {s['viewer_count']} | **{s['game_name']}**")
-                                st.markdown(f"Title: **{s['title']}**")
-                                st.markdown(f"<span class='uptime-badge'>⏱️ {s['uptime_str']}</span>", unsafe_allow_html=True)
-                            st.markdown("---")
 
     # ─── TAB 3: CCTV ───
     with tab_cctv:
