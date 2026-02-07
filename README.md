@@ -1,5 +1,5 @@
 # 👁️ TWITCH VOID SCANNER v3.2
-**A Digital Telescope for the Darkest Corners of Live Streaming**
+**A Digital Telescope for the Deepest Corners of Live Streaming**
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.31-FF4B4B.svg)
