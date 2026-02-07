@@ -55,7 +55,8 @@ pip install -r requirements.txt
 streamlit run twitch.py
 ```
 
-🔑 Setup & Usage
+### 🔑 Setup & Usage
+
 Launch the App: Open the URL provided in your terminal (usually http://localhost:8501).
 
 Authenticate:
@@ -76,7 +77,8 @@ Set your Viewer Range (recommended: 0-5 for the void, 5-20 for small communities
 
 Hit Start.
 
-🧠 Pro Tips for Hunters
+### 🧠 Pro Tips for Hunters
+
 The "True Void": Set the viewer slider to 0 - 0. This finds streams that are truly broadcasting to nobody.
 
 Keyword Hunting: In "Dragnet" mode, try these terms:
@@ -93,16 +95,18 @@ Work / Study (Focus streams)
 
 The "Mosaic" Technique: In Deep Drill, switch View Mode to MOSAIC. You can scan 50 thumbnails in seconds to spot dark rooms, weird lighting, or glitched feeds faster than reading titles.
 
-⚠️ Disclaimer
+### ⚠️ Disclaimer
+
 This tool is for educational and research purposes (Digital Archaeology).
 
 Respect the privacy of streamers. Just because they have 0 viewers doesn't mean they want to be harassed.
 
-
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/kylevision)
 
 Do not use this tool to brigade or troll small channels.
 
 API Limits: This tool respects Twitch's rate limits, but aggressive usage (scanning 100 pages every second) may result in a temporary API cooldown.
 
 License: MIT
+
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/kylevision)
